@@ -1,18 +1,19 @@
 #! /bin/bash
 
+SPACE_NAME="drugspace"
+
 # the DrugSpace generation script
 
-# load the following datasources:
+# Load the following datasources:
 # drugbank
 # natiuonal drug code directory (https://raw.github.com/dklassen/bio2rdf-scripts/master/ndc/ndc.php)
 # side effects resource database
 # off label and polypharmacy side effect database
 # online inheritance in man
-ndc_script="https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ndc/ndc.php"
-omim_script="https://raw.github.com/dklassen/bio2rdf-scripts/master/omim/omim.php"
+#ndc_script="https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ndc/ndc.php"
+#omim_script="https://raw.github.com/dklassen/bio2rdf-scripts/master/omim/omim.php"
 drugbank_script="https://raw.github.com/dklassen/bio2rdf-scripts/master/drugbank/drugbank.php"
 sider_script=""
-
 
 root_dir="$(pwd)"
 scripts="${root_dir}/scripts"
@@ -21,8 +22,7 @@ isql="${root_dir}/virtuoso/bin/isql"
 isql_cmd="${isql} localhost:1111 -U dba"
 isql_pass='-P dba'
 
-
-#
+##
 # Download the latest version of the rdfapi from github\
 if [ ! -d "php-lib" ]; then
 	wget https://github.com/micheldumontier/php-lib/archive/master.zip -O rdfapi.zip
@@ -52,7 +52,7 @@ function virtuoso_status(){
 ##################################################################################
 function setup(){
 	folder="${scripts}/${1}"
-	echo "creating folder: ${folder}"
+	echo "INFO: Creating folder: ${folder}"
 	mkdir -p $folder
 
 	if [ -f "${folder}/$1.php" ]; then
@@ -60,8 +60,7 @@ function setup(){
 	fi
 
 	cd $folder
-	echo "Downloading from github ${2}"
-	echo "to ${1}.php"
+	echo "INFO: Downloading from github ${2} to ${1}.php"
 	wget --no-check-certificate -q "${2}" "${1}.php"
 
 	if [ ! -d "./download" ]; then 
@@ -82,9 +81,9 @@ function setup(){
 ##########################################################################
 function run_cmd(){
 
-echo "Running: $1"
+echo "INFO: Running virtuoso command: $1"
 if [ $2 ]; then
-	echo "Monitor for completion = yes"
+	echo "INFO: Monitor for completion = yes"
 	logfile=$2
 	
 	if [ ! -f $logfile ]
@@ -111,6 +110,21 @@ function rdf_loader_run(){
    ${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;" &> /dev/null &
 }
 
+function virtuoso_shutdown(){
+		while true; do
+		#virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
+		virtuoso_pid=$(ps -e | grep virtuoso-t | awk '{print $1}')
+		
+		if $virtuoso_pid;
+		then
+			echo "INFO: Virtuoso is shutdown: pid $virtuoso_pid."
+			break
+		fi
+
+		kill -9 "$virtuoso_pid"
+	done
+}
+
 ##########################################################################
 # generate the data
 ##########################################################################
@@ -130,23 +144,11 @@ if $check
 	echo "INFO: a virtuoso instance (virtuoso-t) is running"
 	echo "INFO: Shutting it down now."
 
-	while true; do
-		virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
-
-		echo ps aux | grep -v grep | grep virtuoso-t 
-		
-		if $virtuoso_pid;
-		then
-			echo "INFO: Virtuoso is shutdown: pid $virtuoso_pid."
-			break
-		fi
-
-		kill -9 "$virtuoso_pid"
-	done
+	virtuoso_shutdown
 fi
 
 echo "INFO: Removing old database files as we are creating a new database now"
-rm virtuoso.db virtuoso-temp.db virtuoso.pxa virtuoso.trx virtuoso.lck virtuoso.log
+rm {virtuoso.db,virtuoso-temp.db,virtuoso.pxa,virtuoso.trx,virtuoso.lck,virtuoso.log}
 
 echo "INFO: Starting virtuoso"
 `./virtuoso-t &`
@@ -163,7 +165,7 @@ done
 echo "INFO: Virtuoso is up and running"
 
 echo "INFO: Loading compressed ntriples in the scripts/ directory recursively"
-run_cmd "ld_dir_all('${root_dir}/scripts/','*.nt.gz','drugspace')"
+run_cmd "ld_dir_all('${root_dir}/scripts/','*.nt.gz','${SPACE_NAME}')"
 
 # start five rdf loaders to handle the data
 echo "INFO: Starting RDF loaders"
@@ -186,19 +188,7 @@ done
 
 
 echo "INFO: Shutdown virtuoso now"
-
-while true; do
-	virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
-
-	
-	if $virtuoso_pid;
-	then
-		echo "INFO: Virtuoso is shutdown"
-		break
-	fi
-
-	kill -9 "$virtuoso_pid"
-done
+virtuoso_shutdown
 
 ##################################################################################################
 # generate analytics
@@ -256,10 +246,58 @@ echo "INFO: Generating analytics"
 
 	# merge the files into a single compressed nq file
 	cd "$root_dir/analytics"
-	touch drugspace.nq
-	zcat *.nq.gz > drugspace.nq
-	gzip drugspace.nq
+	if [ -f "${SPACE_NAME}.nq.gz" ];
+		then
+		rm "${SPACE_NAME}.nq.gz"
+	fi
+
+	touch ${SPACE_NAME}.nq
+	zcat *.nq.gz > ${SPACE_NAME}.nq
+	gzip ${SPACE_NAME}.nq
 
 	rm part*
 
-	echo "Finished processing Drugspace" | mail dataspace $1
+ ##
+ # Load the analytics file into the virtuoso db
+cd "${root_dir}/virtuoso/bin/"
+
+virtuoso_status check
+if $check
+	then
+	echo "INFO: a virtuoso instance (virtuoso-t) is running"
+	echo "INFO: Shutting it down now."
+	virtuoso_shutdown
+fi
+
+echo "INFO: Starting virtuoso"
+`./virtuoso-t &`
+
+log="$(pwd)/virtuoso.log"
+
+tail -n 0 -F "${log}" | while read LOGLINE
+do
+	[[ "${LOGLINE}" == *"Server online at 1111"* ]] && pkill -P $$ tail
+	[[ "${LOGLINE}" == *"Virtuoso is already runnning"* ]] && echo "Virtuoso already running" && pkill -P $$ tail
+	[[ "${LOGLINE}" == *"There is no configuration file virtuoso.ini"* ]] && echo "No virtuoso.ini file found" && pkill -P $$ tail
+done
+
+echo "INFO: Virtuoso is up and running"
+
+echo "INFO: Loading compressed nquads in the scripts/ directory recursively"
+run_cmd "ld_dir('${root_dir}/analytics/','*.nq.gz','analytics_is_nquads')"
+run_cmd "rdf_loader_run()"
+
+echo "INFO: Shutdown virtuoso now"
+virtuoso_shutdown
+
+##
+# Packaging everything into a nice tar file for shipment
+cd ${root_dir}
+mkdir ${SPACE_NAME}
+mv ./virtuoso/bin/virtuoso.db ${SPACE_NAME}
+mv ./analytics/${SPACE_NAME}.nq.gz ${SPACE_NAME}/${SPACE_NAME}_analytics.nq.gz
+tar -cvzf ${SPACE_NAME}.tar.gz ${SPACE_NAME}/
+
+##
+# Let me know when it is finished
+echo "Finished processing ${SPACE_NAME}" | mail dataspace $1
