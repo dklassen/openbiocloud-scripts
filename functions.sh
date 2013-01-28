@@ -115,13 +115,13 @@ function virtuoso_shutdown(){
 # parameter : array of tab deliminated name\turl pairs
 #########################################################################
 function generate_data(){
-	for i in "${$1[@]}";
+	
+	for i in "${sources[@]}"
 	do
-	name=`echo $i | awk '{print $1}'`
-	url=`echo $i | awk '{print $2}'`
+		name=`echo $i | awk '{print $1}'`
+		url=`echo $i | awk '{print $2}'`
 
-	setup $name $url
-
+		setup $name $url
 	done
 }
 

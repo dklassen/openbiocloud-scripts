@@ -5,17 +5,15 @@ SPACE_NAME="drugspace"
 root_dir="$(pwd)"
 scripts="${root_dir}/scripts"
 
-ndc_script="https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ndc/ndc.php"
-omim_script="https://raw.github.com/dklassen/bio2rdf-scripts/master/omim/omim.php"
-drugbank_script="https://raw.github.com/dklassen/bio2rdf-scripts/master/drugbank/drugbank.php"
-sider_script="https://raw.github.com/micheldumontier/bio2rdf-scripts/sider/sider/sider.php"
-
-declare -a sources=("ndc\t$ndc_script" "omim\t$omim_script" "drugbank\t$drugbank_script" "sider\t$sider_script")
+sources[0]="ndc https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ndc/ndc.php"
+sources[1]="omim https://raw.github.com/dklassen/bio2rdf-scripts/master/omim/omim.php"
+sources[2]="drugbank https://raw.github.com/dklassen/bio2rdf-scripts/master/drugbank/drugbank.php"
+sources[3]="sider https://raw.github.com/micheldumontier/bio2rdf-scripts/sider/sider/sider.php"
 
 #=========================================================================
 # Start the script here
 #=========================================================================
-generate_data $sources
+generate_data 
 build_database
 generate_analytics
 package
