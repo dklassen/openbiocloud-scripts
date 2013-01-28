@@ -124,13 +124,11 @@ setup "omim" $omim_script
 cd "${root_dir}/virtuoso/bin/"
 virtuoso_ini="../var/lib/virtuoso/db/virtuoso.ini"
 
-
 virtuoso_status check
 if $check
 	then
-	echo "INFO: a virtuoso instance is running"
+	echo "INFO: a virtuoso instance (virtuoso-t) is running"
 	echo "INFO: Shutting it down now."
-	# we are going to shut it down
 
 	while true; do
 		virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
@@ -147,14 +145,10 @@ if $check
 	done
 fi
 
-if [ -f "./virtuoso.db" ]; then
-	echo "INFO: Removing old database file"
-	rm virtuoso.db virtuoso-temp.db virtuoso.pxa virtuoso.trx virtuoso.lck virtuoso.log
-fi
-
+echo "INFO: Removing old database files as we are creating a new database now"
+rm virtuoso.db virtuoso-temp.db virtuoso.pxa virtuoso.trx virtuoso.lck virtuoso.log
 
 echo "INFO: Starting virtuoso"
-#`./virtuoso-t +configfile=../var/lib/virtuoso/db/virtuoso.log &`
 `./virtuoso-t &`
 
 log="$(pwd)/virtuoso.log"
@@ -166,29 +160,24 @@ do
 	[[ "${LOGLINE}" == *"There is no configuration file virtuoso.ini"* ]] && echo "No virtuoso.ini file found" && pkill -P $$ tail
 done
 
-echo "virtuoso .... started [OK]"
+echo "INFO: Virtuoso is up and running"
 
-
-# clear the load list in case we are re-running everything
-echo "INFO: Clearing the load list "
-run_cmd "delete from load_list"
-# load any generated data
 echo "INFO: Loading compressed ntriples in the scripts/ directory recursively"
 run_cmd "ld_dir_all('${root_dir}/scripts/','*.nt.gz','drugspace')"
 
 # start five rdf loaders to handle the data
+echo "INFO: Starting RDF loaders"
 for x in {1..5}
 do 
  	rdf_loader_run 
 done
-
 
 # check the loading process and wait untill it is finished
 while true ; do
 	result=`./isql localhost:1111 -U dba -P dba banner=off verbose=off exec="select count(1) from load_list where ll_state=0 or ll_state=1;"`
 
 	if [ "$result" == 0 ]; then
-		echo "finished loading"
+		echo "INFO: Finished loading"
 		break
 	fi
 	echo -en "\rstill waiting...files left: $result"
@@ -198,26 +187,25 @@ done
 
 echo "INFO: Shutdown virtuoso now"
 
-	while true; do
-		virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
+while true; do
+	virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
 
-		echo ps aux | grep -v grep | grep virtuoso-t 
-		
-		if $virtuoso_pid;
-		then
-			echo "INFO: Virtuoso is shutdown: pid $virtuoso_pid."
-			break
-		fi
+	
+	if $virtuoso_pid;
+	then
+		echo "INFO: Virtuoso is shutdown"
+		break
+	fi
 
-		kill -9 "$virtuoso_pid"
-	done
+	kill -9 "$virtuoso_pid"
+done
 
-exit 1
 ##################################################################################################
 # generate analytics
 ##################################################################################################
 #WORKDIR="$(dirname "$PWD")/"
 	
+echo "INFO: Generating analytics"
 
 	WORKDIR=/home/dankla/bio2rdf-dataspaces/analytics/graph_analytics
 	CLASS_PATH=$WORKDIR/scripts/analytics-assembly.jar
@@ -267,7 +255,6 @@ exit 1
 	fi
 
 	# merge the files into a single compressed nq file
-
 	cd "$root_dir/analytics"
 	touch drugspace.nq
 	zcat *.nq.gz > drugspace.nq
@@ -275,4 +262,4 @@ exit 1
 
 	rm part*
 
-	echo "Finished processing Drugspace" | mail dataspace klassen.dana@gmail.com
+	echo "Finished processing Drugspace" | mail dataspace $1
