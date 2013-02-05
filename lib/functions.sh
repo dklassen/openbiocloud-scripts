@@ -59,11 +59,15 @@ function setup(){
 		php "${1}.php" files=all indir="$(pwd)/download/" outdir="$(pwd)/data/"
 	else
 		echo "INFO: Running with files flag set to $3"
-		php "${1}.php" files=${3} indir="$(pwd)/download/" outdir="$(pwd)/data/"
+		php "${1}.php" files=${3} indir="$(pwd)/download/" outdir="$(pwd)/data/" $4
 	fi
+
+	status=$?
+    if [ $status -ne 0 ]; then
+        echo "ERROR: Current scripted ${1} died"
+    fi
+
 }
-
-
 ##########################################################################
 # run the passed in command through the virtuoso isql interface
 # params : isql command
@@ -71,7 +75,7 @@ function setup(){
 function run_cmd(){
 
 echo "INFO: Running virtuoso command: $1"
-tail -n0 -F $logfile 2>/dev/null | trigger $! &
+#tail -n0 -F $logfile 2>/dev/null | trigger $! &
 
 ${isql_cmd} ${isql_pass} <<EOF &> $logfile
 	$1;
@@ -118,8 +122,9 @@ function generate_data(){
 		name=`echo $i | awk '{print $1}'`
 		url=`echo $i | awk '{print $2}'`
 		files=`echo $i | awk '{print $3}'`
+		extra=`echo $i | awk '{print $4}'`
 
-		setup $name $url $files
+		setup $name $url $files $extra
 	done
 }
 
@@ -158,10 +163,10 @@ done
 echo "INFO: Virtuoso is up and running"
 
 echo "INFO: Loading compressed ntriples in the scripts/ directory recursively"
-run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.nt.gz','${SPACE_NAME}')"
-run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.nt','${SPACE_NAME}')"
-run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.owl','${SPACE_NAME}')"
-run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.ttl.gz','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${scripts}/','*.nt.gz','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${scripts}/','*.nt','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${scripts}/','*.owl','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${scripts}/','*.ttl.gz','${SPACE_NAME}')"
 
 # start five rdf loaders to handle the data
 echo "INFO: Starting RDF loaders"
