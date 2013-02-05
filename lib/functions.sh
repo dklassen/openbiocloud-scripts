@@ -4,7 +4,6 @@ isql="${root_dir}/virtuoso/bin/isql"
 isql_cmd="${isql} localhost:1111 -U dba"
 isql_pass='-P dba'
 
-
 #####################################################################################
 # could use lsof to check the http port if there is a webservice running?
 #####################################################################################
@@ -20,17 +19,20 @@ function virtuoso_status(){
 	eval $_virtuoso_status="'$_status_result'" 
 }
 
-
 ###################################################################################
 # $1 -> name of the script
 # $2 -> url for script
 ##################################################################################
 function setup(){
 
-	if [ ! -d "php-lib" ]; then
+	# We need the php-lib one directory up to run scripts
+	if [ ! -d "${root_dir}/dataspaces/php-lib" ]; then
+		previous=$(pwd)
+		cd "${root_dir}/dataspaces/"
 		wget https://github.com/micheldumontier/php-lib/archive/master.zip -O rdfapi.zip
 		unzip rdfapi.zip && rm rdfapi.zip
-		mv php-lib-master php-lib
+		mv php-lib-master/ php-lib/
+		cd previous
 	fi
 
 	folder="${scripts}/${1}"
@@ -53,7 +55,12 @@ function setup(){
 		mkdir "./data"
 	fi
 
-	php "${1}.php" files=all indir="$(pwd)/download/" outdir="$(pwd)/data/"
+	if [ "$3" == "" ];then
+		php "${1}.php" files=all indir="$(pwd)/download/" outdir="$(pwd)/data/"
+	else
+		echo "INFO: Running with files flag set to $3"
+		php "${1}.php" files=${3} indir="$(pwd)/download/" outdir="$(pwd)/data/"
+	fi
 }
 
 
@@ -64,19 +71,7 @@ function setup(){
 function run_cmd(){
 
 echo "INFO: Running virtuoso command: $1"
-if [ $2 ]; then
-	echo "INFO: Monitor for completion = yes"
-	logfile=$2
-	
-	if [ ! -f $logfile ]
-	then
-		mkdir -p ${logfile}
-	fi
-	tail -n0 -F $logfile 2>/dev/null | trigger $! &
-else
-	logfile="/dev/null"
-fi
-
+tail -n0 -F $logfile 2>/dev/null | trigger $! &
 
 ${isql_cmd} ${isql_pass} <<EOF &> $logfile
 	$1;
@@ -89,24 +84,26 @@ EOF
 # start new rdf_loader as background job
 ##########################################################################
 function rdf_loader_run(){
-   ${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;" &> /dev/null &
+echo  ${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;" &> /dev/null &
+   `${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;" &> /dev/null &`
 }
 
 ###########################################################################
 # Shutdown a virtuoso instance
 ###########################################################################
 function virtuoso_shutdown(){
-		while true; do
+	while true ; do
 		#virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
 		virtuoso_pid=$(ps -e | grep virtuoso-t | awk '{print $1}')
 		
-		if $virtuoso_pid ;
+		kill -9 "$virtuoso_pid"
+
+		virtuoso_pid=$(ps -e | grep virtuoso-t | awk '{print $1}')
+		if [ "$virtuoso_pid" != "" ] ;
 		then
 			echo "INFO: Virtuoso is shutdown"
 			break
 		fi
-
-		kill -9 "$virtuoso_pid"
 	done
 }
 
@@ -120,8 +117,9 @@ function generate_data(){
 	do
 		name=`echo $i | awk '{print $1}'`
 		url=`echo $i | awk '{print $2}'`
+		files=`echo $i | awk '{print $3}'`
 
-		setup $name $url
+		setup $name $url $files
 	done
 }
 
@@ -143,7 +141,7 @@ if $check
 fi
 
 echo "INFO: Removing old database files as we are creating a new database now"
-rm {virtuoso.db,virtuoso-temp.db,virtuoso.pxa,virtuoso.trx,virtuoso.lck,virtuoso.log}
+rm {virtuoso.db,virtuoso-temp.db,virtuoso.pxa,virtuoso.trx,virtuoso.lck,virtuoso.log} > /dev/null
 
 echo "INFO: Starting virtuoso"
 `./virtuoso-t &`
@@ -160,7 +158,10 @@ done
 echo "INFO: Virtuoso is up and running"
 
 echo "INFO: Loading compressed ntriples in the scripts/ directory recursively"
-run_cmd "ld_dir_all('${root_dir}/scripts/','*.nt.gz','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.nt.gz','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.nt','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.owl','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${root_dir}/${SPACE_NAME}/','*.ttl.gz','${SPACE_NAME}')"
 
 # start five rdf loaders to handle the data
 echo "INFO: Starting RDF loaders"
@@ -170,7 +171,7 @@ do
 done
 
 # check the loading process and wait untill it is finished
-while true ; do
+while true; do
 	result=`./isql localhost:1111 -U dba -P dba banner=off verbose=off exec="select count(1) from load_list where ll_state=0 or ll_state=1;"`
 
 	if [ "$result" == 0 ]; then
@@ -199,7 +200,7 @@ function generate_analytics(){
 
 	mkdir "$root_dir/analytics"
 	HADOOP_STATS_DIR=${root_dir}/analytics
-	EXPORT_DIR=${root_dir}/scripts
+	EXPORT_DIR=${scripts}
 
 	# take the latest sindice-export
 	# change date to name of folder you want to put analysis in that is inside export dir
@@ -285,19 +286,21 @@ run_cmd "rdf_loader_run()"
 
 echo "INFO: Shutdown virtuoso now"
 virtuoso_shutdown
-
 }
 
+##
+# Package all the data, virtuoso.db, and analytics in a tar ball ready for export.
 function package(){
 	cd ${root_dir}
-	mkdir ${SPACE_NAME}
-	mv ./virtuoso/bin/virtuoso.db ${SPACE_NAME}
-	mv ./analytics/${SPACE_NAME}.nq.gz ${SPACE_NAME}/${SPACE_NAME}_analytics.nq.gz
-	tar -cvzf ${SPACE_NAME}.tar.gz ${SPACE_NAME}/
+	deploy="${SPACE_NAME}/deploy"
+	mkdir $deploy
+	mv ./virtuoso/bin/virtuoso.db ${deploy}
+	mv ./analytics/${SPACE_NAME}.nq.gz ${deploy}/${SPACE_NAME}_analytics.nq.gz
+	tar -cvzf ${SPACE_NAME}.tar.gz ${deploy}
 }
 
+##
+# Send an email when everything is finished
 function alert(){
-	##
-	# Let me know when it is finished
 	echo "Finished processing ${SPACE_NAME}" | mail dataspace $1
 }

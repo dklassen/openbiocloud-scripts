@@ -1,7 +1,7 @@
 virtuoso/*
 php-lib/*
-scripts/*
 rdfapi.zip
+dataspaces/*
 
 .DS_Store
 .DS_Store?
