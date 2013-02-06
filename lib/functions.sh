@@ -2,7 +2,7 @@
 
 isql="${root_dir}/virtuoso/bin/isql"
 isql_cmd="${isql} localhost:1111 -U dba"
-isql_pass='-P dba'
+isql_pass="-P dba"
 
 #####################################################################################
 # could use lsof to check the http port if there is a webservice running?
@@ -88,7 +88,6 @@ EOF
 # start new rdf_loader as background job
 ##########################################################################
 function rdf_loader_run(){
-echo  ${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;" &> /dev/null &
    `${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;" &> /dev/null &`
 }
 
