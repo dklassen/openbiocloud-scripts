@@ -1,8 +1,5 @@
 #! /bin/bash
 
-isql="${root_dir}/virtuoso/bin/isql"
-isql_cmd="${isql} localhost:1111 -U dba"
-isql_pass="-P dba"
 
 #####################################################################################
 # could use lsof to check the http port if there is a webservice running?
@@ -29,10 +26,10 @@ function setup(){
 	if [ ! -d "${root_dir}/dataspaces/php-lib" ]; then
 		previous=$(pwd)
 		cd "${root_dir}/dataspaces/"
-		wget https://github.com/micheldumontier/php-lib/archive/master.zip -O rdfapi.zip
+		wget -q https://github.com/micheldumontier/php-lib/archive/master.zip -O rdfapi.zip
 		unzip rdfapi.zip && rm rdfapi.zip
 		mv php-lib-master/ php-lib/
-		cd previous
+		cd $previous
 	fi
 
 	folder="${scripts}/${1}"
@@ -45,26 +42,27 @@ function setup(){
 
 	cd $folder
 	echo "INFO: Downloading from github ${2} to ${1}.php"
-	wget --no-check-certificate -q "${2}" "${1}.php"
+	wget --no-check-certificate -q $2 -O $1.php
 
-	if [ ! -d "./download" ]; then 
-		mkdir "./download"
+	if [ ! -d "${data_dir}/$1/download" ]; then 
+		mkdir -p "${data_dir}/$1/download"
 	fi
 
-	if [ ! -d "./data" ] ;then 
-		mkdir "./data"
+	if [ ! -d "${data_dir}/$1/data" ] ;then 
+		mkdir -p "${data_dir}/$1/data"
 	fi
 
 	if [ "$3" == "" ];then
-		php "${1}.php" files=all indir="$(pwd)/download/" outdir="$(pwd)/data/"
+		echo "INFO: Running $1.php"
+		php "${1}.php" files=all indir="${data_dir}/$1/download/" outdir="${data_dir}/$1/data/"
 	else
 		echo "INFO: Running with files flag set to $3"
-		php "${1}.php" files=${3} indir="$(pwd)/download/" outdir="$(pwd)/data/" $4
+		php "${1}.php" files=${3} indir="${data_dir}/$1/download/" outdir="${data_dir}/$1/data/" $4
 	fi
 
 	status=$?
     if [ $status -ne 0 ]; then
-        echo "ERROR: Current scripted ${1} died"
+        echo "ERROR: Current script ${1} died" 
     fi
 
 }
@@ -88,26 +86,27 @@ EOF
 # start new rdf_loader as background job
 ##########################################################################
 function rdf_loader_run(){
-   `${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;" &> /dev/null &`
+   ${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="rdf_loader_run(); exit;"
 }
 
 ###########################################################################
 # Shutdown a virtuoso instance
 ###########################################################################
 function virtuoso_shutdown(){
-	while true ; do
-		#virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
-		virtuoso_pid=$(ps -e | grep virtuoso-t | awk '{print $1}')
-		
-		kill -9 "$virtuoso_pid"
 
-		virtuoso_pid=$(ps -e | grep virtuoso-t | awk '{print $1}')
-		if [ "$virtuoso_pid" != "" ] ;
-		then
-			echo "INFO: Virtuoso is shutdown"
-			break
-		fi
-	done
+		#virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
+		# virtuoso_pid=$(ps -e | grep virtuoso-t | awk '{print $1}')
+
+		# kill -9 "$virtuoso_pid"
+		run_cmd "shutdown(); exit;" &
+
+		virtuoso_log="${db_dir}virtuoso.log"
+
+		tail -n 0 -F "$virtuoso_log" | while read LOGLINE
+		do
+			[[ "${LOGLINE}" == *"Server shutdown complete"* ]] && echo "Virtuoso is shutdown gracefully" && pkill -P $$ tail
+		done
+
 }
 
 #########################################################################
@@ -132,8 +131,8 @@ function generate_data(){
 ########################################################################
 function build_database(){
 
-cd "${root_dir}/virtuoso/bin/"
-virtuoso_ini="../var/lib/virtuoso/db/virtuoso.ini"
+cd ${db_dir}
+virtuoso_ini=${db_dir}/virtuoso.ini
 
 virtuoso_status check
 if $check
@@ -145,33 +144,34 @@ if $check
 fi
 
 echo "INFO: Removing old database files as we are creating a new database now"
-rm {virtuoso.db,virtuoso-temp.db,virtuoso.pxa,virtuoso.trx,virtuoso.lck,virtuoso.log} > /dev/null
+rm -f {virtuoso.db,virtuoso-temp.db,virtuoso.pxa,virtuoso.trx,virtuoso.lck} > /dev/null
+
+
 
 echo "INFO: Starting virtuoso"
-`./virtuoso-t &`
+./virtuoso-t &
 
-log="$(pwd)/virtuoso.log"
-
-tail -n 0 -F "${log}" | while read LOGLINE
+virtuoso_log="${db_dir}virtuoso.log"
+# NOTE: There is a fault here when the commented lines are used.
+tail -n 0 -F "${virtuoso_log}" | while read LOGLINE
 do
-	[[ "${LOGLINE}" == *"Server online at 1111"* ]] && pkill -P $$ tail
-	[[ "${LOGLINE}" == *"Virtuoso is already runnning"* ]] && echo "Virtuoso already running" && pkill -P $$ tail
-	[[ "${LOGLINE}" == *"There is no configuration file virtuoso.ini"* ]] && echo "No virtuoso.ini file found" && pkill -P $$ tail
+	echo $LOGLINE
+	[[ "${LOGLINE}" == *"Server online at 1111"* ]] && echo "INFO: Virtuoso is up and running" && pkill -P $$ tail
+    #[[ "${LOGLINE}" == *"Virtuoso is already runnning"* ]] && echo "Virtuoso already running" && pkill -P $$ tail
+	 #[[ "${LOGLINE}" == *"There is no configuration file virtuoso.ini"* ]] && echo "No virtuoso.ini file found" && pkill -P $$ tail
 done
 
-echo "INFO: Virtuoso is up and running"
-
 echo "INFO: Loading compressed ntriples in the scripts/ directory recursively"
-run_cmd "ld_dir_all('${scripts}/','*.nt.gz','${SPACE_NAME}')"
-run_cmd "ld_dir_all('${scripts}/','*.nt','${SPACE_NAME}')"
-run_cmd "ld_dir_all('${scripts}/','*.owl','${SPACE_NAME}')"
-run_cmd "ld_dir_all('${scripts}/','*.ttl.gz','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${data_dir}/','*.nt.gz','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${data_dir}/','*.nt','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${data_dir}/','*.owl','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${data_dir}/','*.ttl.gz','${SPACE_NAME}')"
 
 # start five rdf loaders to handle the data
 echo "INFO: Starting RDF loaders"
 for x in {1..5}
 do 
- 	rdf_loader_run 
+ 	${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec='rdf_loader_run(); exit;' &> /dev/null &
 done
 
 # check the loading process and wait untill it is finished
@@ -183,12 +183,12 @@ while true; do
 		break
 	fi
 	echo -en "\rstill waiting...files left: $result"
-	sleep 2
+	sleep 10
 done
 
 
-echo "INFO: Shutdown virtuoso now"
-virtuoso_shutdown
+ echo "INFO: Shutdown virtuoso now"
+ virtuoso_shutdown
 
 }
 
