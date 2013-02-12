@@ -19,14 +19,13 @@ function check_virtuoso_install(){
 
 function setup_data_dir(){
 
-	if [ -d ${data_dir} ];
+	# Create directory if none exists
+	if [ ! -d ${data_dir} ];
 		then
-		echo "WARNING: Data dir exists already data will be copied over "
-		rm -rf $data_dir && mkdir -p $data_dir
-	else
 		mkdir -p $data_dir
 	fi
 
+	# Hard reset the virtuoso directory
 	if [ -d ${db_dir} ];
 	then 
 		rm -rf $db_dir && mkdir -p $db_dir
@@ -36,6 +35,6 @@ function setup_data_dir(){
 
 	echo "INFO: Setup virtuoso in ${db_dir}"
 	cp ${root_dir}/virtuoso.ini ${db_dir}/virtuoso.ini
-	ln -s ${virtuoso_dir}/bin/virtuoso-t	${db_dir}/virtuoso-t
+	ln -s ${virtuoso_dir}/bin/virtuoso-t ${db_dir}/virtuoso-t
 	ln -s ${virtuoso_dir}/bin/isql ${db_dir}/isql
 }

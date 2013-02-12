@@ -295,12 +295,13 @@ virtuoso_shutdown
 ##
 # Package all the data, virtuoso.db, and analytics in a tar ball ready for export.
 function package(){
-	cd ${root_dir}
-	deploy="${scripts}/deploy"
-	mkdir $deploy
-	mv ${root_dir}/virtuoso/bin/virtuoso.db ${deploy}
-	mv ${root_dir}/analytics/${SPACE_NAME}.nq.gz ${deploy}/${SPACE_NAME}_analytics.nq.gz
-	tar -cvzf ${scripts}/${SPACE_NAME}.tar.gz ${deploy}
+	cd ${data_dir}
+	deploy="/opt/dataspaces/"
+	mkdir -p $deploy
+	#mv ${data_dir}/virtuoso/bin/virtuoso.db ${deploy}
+	#mv ${data_dir}/analytics/${SPACE_NAME}.nq.gz ${deploy}/${SPACE_NAME}_analytics.nq.gz
+
+	cd ${data_dir} && mv virtuoso ${SPACE_NAME} && tar -cvzf ${SPACE_NAME}.tar.gz ${SPACE_NAME}/ && mv ${SPACE_NAME}.tar.gz $deploy
 }
 
 ##
