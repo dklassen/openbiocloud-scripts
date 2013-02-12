@@ -32,10 +32,9 @@ function setup(){
 		cd $previous
 	fi
 
-
 	folder="${scripts}/${1}"
 
-	if [ ! -d ${folder} ];then
+	if [ ! -d "${data_dir}/$1" ];then
 		echo "INFO: Creating folder: ${folder}"
 		mkdir -p $folder
 
