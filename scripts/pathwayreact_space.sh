@@ -29,10 +29,10 @@ fi
 # Create the data directories
 setup_data_dir
 
-# touch $logfile
-# echo "INFO: Logging to $logfile"
+touch $logfile
+echo "INFO: Logging to $logfile"
 
-# # Directory where we are going to put everything
+# Directory where we are going to put everything
 if [ ! -d "$scripts" ];then
 	mkdir -p $scripts
 fi
@@ -50,9 +50,8 @@ fi
 
 # Download kegg data from bio2rdf since requires paid subscription
 download_kegg
-
 generate_data
 build_database
-# #generate_analytics
+# generate_analytics
 package
 alert $1

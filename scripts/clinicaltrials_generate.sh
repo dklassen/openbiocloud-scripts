@@ -33,10 +33,48 @@ if [ ! -d "$scripts" ];then
 	mkdir -p $scripts
 fi
 
-# List of source scripts to download and run format: [ name script_url files_to_process ]
-sources[0]="clinical_trials https://raw.github.com/dklassen/bio2rdf-scripts/master/clinical-trials/clinicaltrials.php"
+# We need the php-lib one directory up to run scripts
+if [ ! -d "${root_dir}/dataspaces/php-lib" ]; then
+	previous=$(pwd)
+	cd "${root_dir}/dataspaces/"
+	wget -q https://github.com/micheldumontier/php-lib/archive/master.zip -O rdfapi.zip
+	unzip rdfapi.zip && rm rdfapi.zip
+	mv php-lib-master/ php-lib/
+	cd $previous
+fi
 
-generate_data
+# HGNC doesn't take the files parameter need a custom solution
+cto="https://raw.github.com/dklassen/bio2rdf-scripts/master/clinical-trials/clinicaltrials.php"
+
+folder="${scripts}/cto"
+echo "INFO: Creating folder: ${folder}"
+mkdir -p $folder
+
+if [ -f "${folder}/cto.php" ]; then
+	rm "${folder}/cto.php"
+fi
+
+cd $folder
+echo "INFO: Downloading from github ${cto} to cto.php"
+wget --no-check-certificate -q $cto -O cto.php
+
+if [ ! -d "${data_dir}/cto/download" ]; then 
+	mkdir -p "${data_dir}/cto/download"
+fi
+
+if [ ! -d "${data_dir}/cto/data" ] ;then 
+	mkdir -p "${data_dir}/cto/data"
+fi
+
+echo "INFO: Parsing CTO"
+php "cto.php" process=crawl files=all indir="${data_dir}/cto/download/" outdir="${data_dir}/cto/data/"
+
+status=$?
+if [ $status -ne 0 ]; then
+    echo "ERROR: CTO script died"
+    exit 1
+fi
+
 build_database
 # #generate_analytics
 package
