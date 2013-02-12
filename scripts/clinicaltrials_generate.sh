@@ -39,5 +39,5 @@ sources[0]="clinical_trials https://raw.github.com/dklassen/bio2rdf-scripts/mast
 generate_data
 build_database
 # #generate_analytics
-# package
-# alert $1
+package
+alert $1

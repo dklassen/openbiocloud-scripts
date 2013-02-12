@@ -1,16 +1,29 @@
 #! /bin/bash
+set -e
+umask 0022
 
 SPACE_NAME="drugspace"
+data_dir=/opt/data/${SPACE_NAME}		# Where the data will be placed
+db_dir=${data_dir}/virtuoso/			# Where the virtuoso db will be constructucted
 
 root_dir=$(dirname $(dirname "$(pwd)/.."))
 scripts="${root_dir}/dataspaces/${SPACE_NAME}"
-logfile="/tmp/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
+logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
 
 cd $root_dir
 source ./lib/functions.sh
+source ./lib/common.sh
 
-# Start fresh
-rm -rf $scripts
+# Check virtuoso can be found
+check_virtuoso_install
+if [  $? -ne 0 ];
+	then
+	echo "$?"
+	exit 1
+fi
+
+# Create the data directories
+setup_data_dir
 
 # Directory where we are going to put everything
 if [ ! -d "$scripts" ];then
@@ -35,15 +48,15 @@ generate_data
 human_phenotype="http://purl.obolibrary.org/obo/hp.owl"
 disease_ontology="http://purl.obolibrary.org/obo/doid.owl"
 
-folder="${scripts}/ontologies/"
+folder="${data_dir}/ontologies/"
 echo "INFO: Creating folder: ${folder}"
 mkdir -p $folder
 
 cd $folder
 echo "INFO: Downloading ontologies"
-wget --no-check-certificate -q "${human_phenotype}" "human_phenotype.owl"
+wget --no-check-certificate  ${human_phenotype} -O human_phenotype.owl
 echo "INFO: Done with human_phenotype"
-wget --no-check-certificate -q "${disease_ontology}" "disease_ontology.owl"
+wget --no-check-certificate  ${disease_ontology} -O disease_ontology.owl
 echo "INFO: Done with disease_ontology"
 echo "INFO: Finished downloading the ontologies"
 

@@ -22,42 +22,90 @@ if [  $? -ne 0 ];
 	exit 1
 fi
 
-# Create the data directories
- setup_data_dir
+setup_data_dir
+touch $logfile
+echo "INFO: Logging to $logfile"
 
-# touch $logfile
-# echo "INFO: Logging to $logfile"
+if [ ! -d "$scripts" ];then
+	mkdir -p $scripts
+fi
 
-# # Directory where we are going to put everything
-# if [ ! -d "$scripts" ];then
-# 	mkdir -p $scripts
-# fi
+# List of source scripts to download and run format: [ name script_url files_to_process ]
+sources[0]="ctd https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ctd/ctd.php"
+sources[1]="pharmgkb https://github.com/bio2rdf/bio2rdf-scripts/raw/master/pharmgkb/pharmgkb.php"
+sources[2]='mgi https://raw.github.com/bio2rdf/bio2rdf-scripts/master/mgi/mgi.php'
 
-# # List of source scripts to download and run format: [ name script_url files_to_process ]
- sources[0]="ctd https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ctd/ctd.php"
-# sources[1]="pharmgkb https://github.com/bio2rdf/bio2rdf-scripts/raw/master/pharmgkb/pharmgkb.php offsides"
-# sources[2]="pubchem https://raw.github.com/dklassen/bio2rdf-scripts/pubchem/pubchem/pubchem.php bioactivity sync=true"
-# sources[3]='mgi https://raw.github.com/bio2rdf/bio2rdf-scripts/master/mgi/mgi.php'
+mysql_pass="penguinsdontfly"
+mysql_user='root'
 
-# Direct download from bio2rdf server
+# Install mysql and chembldb
+mysql_pkg=$(dpkg -s mysql-server | grep Status | cut -f 4 -d ' ')
+if [ "$mysql_pkg" != "installed" ];then
+	echo "INFO: Installing mysql"
+	echo "$mysql_pass" | $sudo apt-get install mysql-server
+fi
 
-# pubmed="http://download.bio2rdf.org/release/2/pubmed/"
-# mkdir ${scripts}/pubmed && cd $_
-# wget -r -nH -np ${pubmed}
-# find ./release -name '*.nt.gz' -exec cp {} ./ \;
-# rm -rf release/
+# Set up mysql database
+chembl_is_installed=$(mysql -u${mysql_user} -p${mysql_pass} -e "SHOW DATABASES LIKE 'chembl'" | grep chembl)
+if [ $chembl_is_installed -ne 'chembl' ];then
+	mysql -u$mysql_user -p $mysql_pass -e 'create database chembl'
 
+	echo 'INFO: Creating chembl download directory'
+	chembl="ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_15_mysql.tar.gz"
+	mkdir -p $data_dir/chembl/ && cd $_
+	wget $chembl
+	tar -xvf chembl_15_mysql.tar.gz 
+	cd chembl_15_mysql/
+	mysql -u$mysql_user -p -h localhost chembl < chembl_15_mysql/chembl_15.mysqldump.sql 
+fi
 
-# #=========================================================================
-# # Start the bio2rdf scripts here
-# #=========================================================================
+# Run the chembl script for assays and compounds
+# Using the chembl branch from dklassen
+chembl_script="https://raw.github.com/dklassen/bio2rdf-scripts/chembl/chembl/chembl.php"
+folder="${scripts}/chembl"
+echo "INFO: Creating folder: ${folder}"
+mkdir -p $folder
 
-# # pubmed script requires we make specific subdirectories which we can specfiy through the setup
+if [ -f "${folder}/chembl.php" ]; then
+	rm "${folder}/chembl.php"
+fi
 
-# mkdir -p "${root_dir}/dataspaces/${SPACE_NAME}/pubchem/download/{bioactivity compounds substances}"
+cd $folder
+echo "INFO: Downloading from github $chembl_script to chembl.php"
+wget --no-check-certificate -q $chembl_script -O chembl.php
+
+if [ ! -d "${data_dir}/$1/data" ] ;then 
+	mkdir -p "${data_dir}/chembl/data"
+fi
+
+echo "INFO: Running chembl parser for assay information"
+php chembl.php files=assays outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
+php chembl.php files=compounds outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
+php chembl.php files=targets outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
+
+status=$?
+if [ $status -ne 0 ]; then
+    echo "ERROR: chembl script died while generating assay data" 
+fi
+
+echo "INFO: Running chembl parser for compound information"
+php chembl.php files=compounds outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
+status=$?
+if [ $status -ne 0 ]; then
+    echo "ERROR: chembl script died while generating compound data" 
+fi
+
+# Direct pubmed download from bio2rdf server
+if [ ! -d  ${data_dir}/pubmed/ ]; then
+	pubmed="http://download.bio2rdf.org/release/2/pubmed/"
+	mkdir -p ${data_dir}/pubmed/data/ && cd $_
+	wget -r -nH -np ${pubmed}
+	find ${data_dir}/pubmed/data/release -name '*.nt.gz' -exec cp {} ./ \;
+	rm -rf ${data_dir}/pubmed/data/release
+fi
 
 generate_data
 build_database
-# #generate_analytics
-# package
-# alert $1
+# generate_analytics
+package
+alert $1
