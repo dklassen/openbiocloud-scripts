@@ -39,8 +39,19 @@ function setup_data_dir(){
 	ln -s ${virtuoso_dir}/bin/isql ${db_dir}/isql
 }
 
+# Download pubmed from bio2rdf servers 
+function download_pubmed_from_bio2rdf(){
+	if [ ! -d  ${data_dir}/pubmed/ ]; then
+		pubmed="http://download.bio2rdf.org/release/2/pubmed/"
+		mkdir -p ${data_dir}/pubmed/data/ && cd $_
+		wget -r -nH -np ${pubmed}
+		find ${data_dir}/pubmed/data/release -name '*.nt.gz' -exec cp {} ./ \;
+		rm -rf ${data_dir}/pubmed/data/release
+	fi
+}
+
+# Download kegg data from bio2rdf since requires paid subscription
 function download_kegg(){
-	# Download kegg data from bio2rdf since requires paid subscription
 	if [  "$(ls -A  ${data_dir}/kegg/)" ]; then
 		echo "INFO: KEGG data exists ${data_dir}/kegg/"
 	else
