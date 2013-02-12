@@ -88,22 +88,7 @@ if [ $status -ne 0 ]; then
     echo "ERROR: chembl script died while generating assay data" 
 fi
 
-echo "INFO: Running chembl parser for compound information"
-php chembl.php files=compounds outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
-status=$?
-if [ $status -ne 0 ]; then
-    echo "ERROR: chembl script died while generating compound data" 
-fi
-
-# Direct pubmed download from bio2rdf server
-if [ ! -d  ${data_dir}/pubmed/ ]; then
-	pubmed="http://download.bio2rdf.org/release/2/pubmed/"
-	mkdir -p ${data_dir}/pubmed/data/ && cd $_
-	wget -r -nH -np ${pubmed}
-	find ${data_dir}/pubmed/data/release -name '*.nt.gz' -exec cp {} ./ \;
-	rm -rf ${data_dir}/pubmed/data/release
-fi
-
+download_pubmed_from_bio2rdf
 generate_data
 build_database
 # generate_analytics

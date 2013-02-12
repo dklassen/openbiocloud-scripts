@@ -49,19 +49,7 @@ if [ ! -d "${root_dir}/dataspaces/arc2" ]; then
 fi
 
 # Download kegg data from bio2rdf since requires paid subscription
-if [  "$(ls -A  ${data_dir}/kegg/)" ]; then
-	echo "INFO: KEGG data exists ${data_dir}/kegg/"
-else
-	echo "INFO: Downloading KEGG from http://download.bio2rdf.org/release/2/kegg/kegg.nt.tar.gz"
-	if [ ! -d "${data_dir}/kegg/" ]; then
-		mkdir -p "${data_dir}/kegg/" 
-	fi
-
-	cd "${data_dir}/kegg/"
-	wget -q http://download.bio2rdf.org/release/2/kegg/kegg.nt.tar.gz -O kegg.nt.tar.gz
-	tar -xvf kegg.nt.tar.gz
-	gzip .
-fi
+download_kegg
 
 generate_data
 build_database
