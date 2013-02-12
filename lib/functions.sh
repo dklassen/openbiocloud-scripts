@@ -32,39 +32,44 @@ function setup(){
 		cd $previous
 	fi
 
+
 	folder="${scripts}/${1}"
-	echo "INFO: Creating folder: ${folder}"
-	mkdir -p $folder
 
-	if [ -f "${folder}/$1.php" ]; then
-		rm "${folder}/$1.php"
-	fi
+	if [ ! -d ${folder} ];then
+		echo "INFO: Creating folder: ${folder}"
+		mkdir -p $folder
 
-	cd $folder
-	echo "INFO: Downloading from github ${2} to ${1}.php"
-	wget --no-check-certificate -q $2 -O $1.php
+		if [ -f "${folder}/$1.php" ]; then
+			rm "${folder}/$1.php"
+		fi
 
-	if [ ! -d "${data_dir}/$1/download" ]; then 
-		mkdir -p "${data_dir}/$1/download"
-	fi
+		cd $folder
+		echo "INFO: Downloading from github ${2} to ${1}.php"
+		wget --no-check-certificate -q $2 -O $1.php
 
-	if [ ! -d "${data_dir}/$1/data" ] ;then 
-		mkdir -p "${data_dir}/$1/data"
-	fi
+		if [ ! -d "${data_dir}/$1/download" ]; then 
+			mkdir -p "${data_dir}/$1/download"
+		fi
 
-	if [ "$3" == "" ];then
-		echo "INFO: Running $1.php"
-		php "${1}.php" files=all indir="${data_dir}/$1/download/" outdir="${data_dir}/$1/data/"
+		if [ ! -d "${data_dir}/$1/data" ] ;then 
+			mkdir -p "${data_dir}/$1/data"
+		fi
+
+		if [ "$3" == "" ];then
+			echo "INFO: Running $1.php"
+			php "${1}.php" files=all indir="${data_dir}/$1/download/" outdir="${data_dir}/$1/data/"
+		else
+			echo "INFO: Running with files flag set to $3"
+			php "${1}.php" files=${3} indir="${data_dir}/$1/download/" outdir="${data_dir}/$1/data/" $4
+		fi
+
+		status=$?
+	    if [ $status -ne 0 ]; then
+	        echo "ERROR: Current script ${1} died" 
+	    fi
 	else
-		echo "INFO: Running with files flag set to $3"
-		php "${1}.php" files=${3} indir="${data_dir}/$1/download/" outdir="${data_dir}/$1/data/" $4
+		echo "INFO: Directory exists not going to generate new data"
 	fi
-
-	status=$?
-    if [ $status -ne 0 ]; then
-        echo "ERROR: Current script ${1} died" 
-    fi
-
 }
 ##########################################################################
 # run the passed in command through the virtuoso isql interface
