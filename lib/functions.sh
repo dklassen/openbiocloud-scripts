@@ -78,7 +78,6 @@ function setup(){
 function run_cmd(){
 
 echo "INFO: Running virtuoso command: $1"
-#tail -n0 -F $logfile 2>/dev/null | trigger $! &
 
 ${isql_cmd} ${isql_pass} <<EOF &> $logfile
 	$1;
