@@ -51,6 +51,6 @@ function download_kegg(){
 		cd "${data_dir}/kegg/"
 		wget -q http://download.bio2rdf.org/release/2/kegg/kegg.nt.tar.gz -O kegg.nt.tar.gz
 		tar -xvf kegg.nt.tar.gz
-		gzip .
+		gzip ./*
 	fi
 }
