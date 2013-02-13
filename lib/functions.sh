@@ -97,18 +97,15 @@ function rdf_loader_run(){
 ###########################################################################
 function virtuoso_shutdown(){
 
-		#virtuoso_pid=$(ps aux | grep -v grep | grep virtuoso-t | awk '{print $2}')
-		# virtuoso_pid=$(ps -e | grep virtuoso-t | awk '{print $1}')
+	# kill -9 "$virtuoso_pid"
+	run_cmd "shutdown(); exit;" &
 
-		# kill -9 "$virtuoso_pid"
-		run_cmd "shutdown(); exit;" &
+	virtuoso_log="${db_dir}/virtuoso.log"
 
-		virtuoso_log="${db_dir}virtuoso.log"
-
-		tail -n 0 -F "$virtuoso_log" | while read LOGLINE
-		do
-			[[ "${LOGLINE}" == *"Server shutdown complete"* ]] && echo "Virtuoso is shutdown gracefully" && pkill -P $$ tail
-		done
+	tail -n 0 -F "$virtuoso_log" | while read LOGLINE
+	do
+		[[ "${LOGLINE}" == *"Server shutdown complete"* ]] && echo "Virtuoso is shutdown gracefully" && pkill -P $$ tail
+	done
 
 }
 
