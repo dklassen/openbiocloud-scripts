@@ -17,7 +17,28 @@ function check_virtuoso_install(){
 }
 
 
+function check_dependencies(){
+	if [ ! -d "${root_dir}/dataspaces/arc2" ]; then
+		cd ${root_dir}/dataspaces/
+		wget https://github.com/semsol/arc2/tarball/master -O arc.tar.gz
+		tar -xvf arc.tar.gz
+		mv semsol-arc2-*/ arc2/
+	fi
+
+	# We need the php-lib one directory up to run scripts
+	if [ ! -d "${root_dir}/dataspaces/php-lib" ]; then
+		previous=$(pwd)
+		cd "${root_dir}/dataspaces/"
+		wget -q https://github.com/micheldumontier/php-lib/archive/master.zip -O rdfapi.zip
+		unzip rdfapi.zip && rm rdfapi.zip
+		mv php-lib-master/ php-lib/
+		cd $previous
+	fi
+}
+
 function setup_data_dir(){
+
+	db_dir=${data_dir}/virtuoso/
 
 	# Create directory if none exists
 	if [ ! -d ${data_dir} ];
