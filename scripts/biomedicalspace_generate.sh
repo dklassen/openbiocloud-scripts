@@ -11,8 +11,8 @@ scripts="${root_dir}/dataspaces/${SPACE_NAME}"
 logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
 
 cd $root_dir
-source ./lib/functions.sh
 source ./lib/common.sh
+source ./lib/functions.sh
 
 # Check virtuoso can be found
 check_virtuoso_install
@@ -42,7 +42,8 @@ mysql_user='root'
 mysql_pkg=$(dpkg -s mysql-server | grep Status | cut -f 4 -d ' ')
 if [ "$mysql_pkg" != "installed" ];then
 	echo "INFO: Installing mysql"
-	echo "$mysql_pass" | $sudo apt-get install mysql-server
+    sudo apt-get update
+    echo "$mysql_pass" | $sudo apt-get -y -qq install mysql-server
 fi
 
 # Set up mysql database
