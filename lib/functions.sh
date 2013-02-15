@@ -183,7 +183,7 @@ while true; do
 		break
 	fi
 	echo -en "\rstill waiting...files left: $result"
-	sleep 10
+	sleep 120
 done
 
 
