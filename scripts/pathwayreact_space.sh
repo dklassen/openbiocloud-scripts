@@ -16,6 +16,7 @@ SPACE_NAME="pathwayreact_space"			# Name of the endpoint being created
 data_dir=/opt/data/${SPACE_NAME}		# Where the data will be placed
 db_dir=${data_dir}/virtuoso/			# Where the virtuoso db will be constructucted
 
+mkdir="${root_dir}/dataspaces
 scripts="${root_dir}/dataspaces/${SPACE_NAME}"
 logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
 
