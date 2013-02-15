@@ -1,5 +1,7 @@
 #! /bin/bash
-
+isql=${db_dir}isql
+isql_cmd="${isql} localhost:1111 -U dba"
+isql_pass="-P dba"
 
 #####################################################################################
 # could use lsof to check the http port if there is a webservice running?
@@ -97,10 +99,7 @@ function rdf_loader_run(){
 ###########################################################################
 function virtuoso_shutdown(){
 
-	# kill -9 "$virtuoso_pid"
-	run_cmd "shutdown(); exit;" &
-
-	virtuoso_log="${db_dir}virtuoso.log"
+	${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="shutdown(); exit;" &
 
 	tail -n 0 -F "${virtuoso_log}" | while read LOGLINE
 	do
@@ -132,14 +131,16 @@ function generate_data(){
 function build_database(){
 
 cd ${db_dir}
-virtuoso_ini=${db_dir}/virtuoso.ini
+virtuoso_ini=${db_dir}virtuoso.ini
+virtuoso_log="${db_dir}virtuoso.log"
 
 virtuoso_status check
 if $check
 	then
 	echo "INFO: a virtuoso instance (virtuoso-t) is running"
 	echo "INFO: Shutting it down now."
-
+	echo "$isql"
+	echo "$db_dir"
 	virtuoso_shutdown
 fi
 
@@ -147,9 +148,8 @@ echo "INFO: Removing old database files as we are creating a new database now"
 rm -f {virtuoso.db,virtuoso-temp.db,virtuoso.pxa,virtuoso.trx,virtuoso.lck} > /dev/null
 
 echo "INFO: Starting virtuoso"
-./virtuoso-t &
+./virtuoso-t +configfile=virtuoso.ini &
 
-virtuoso_log="${db_dir}virtuoso.log"
 # NOTE: There is a fault here when the commented lines are used.
 tail -n 0 -F "${virtuoso_log}" | while read LOGLINE
 do
