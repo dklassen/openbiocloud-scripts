@@ -100,9 +100,9 @@ function virtuoso_shutdown(){
 	# kill -9 "$virtuoso_pid"
 	run_cmd "shutdown(); exit;" &
 
-	virtuoso_log="${db_dir}/virtuoso.log"
+	virtuoso_log="${db_dir}virtuoso.log"
 
-	tail -n 0 -F "$virtuoso_log" | while read LOGLINE
+	tail -n 0 -F "${virtuoso_log}" | while read LOGLINE
 	do
 		[[ "${LOGLINE}" == *"Server shutdown complete"* ]] && echo "Virtuoso is shutdown gracefully" && pkill -P $$ tail
 	done
@@ -145,8 +145,6 @@ fi
 
 echo "INFO: Removing old database files as we are creating a new database now"
 rm -f {virtuoso.db,virtuoso-temp.db,virtuoso.pxa,virtuoso.trx,virtuoso.lck} > /dev/null
-
-
 
 echo "INFO: Starting virtuoso"
 ./virtuoso-t &
