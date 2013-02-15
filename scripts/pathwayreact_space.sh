@@ -34,7 +34,8 @@ function setup_dataspace(){
 	echo "INFO: Logging to $logfile"
 
 	# Directory where we are going to put everything
-	if [ ! -d "$scripts" ];then
+	if [ ! -d "$scripts" ] ;
+    then
 		mkdir -p $scripts
 	fi
 }
