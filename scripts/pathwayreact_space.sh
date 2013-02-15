@@ -21,7 +21,7 @@ logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
 
 # # List of source scripts to download and run format: [ name script_url files_to_process ]
 sources[0]="biomodels https://raw.github.com/dklassen/bio2rdf-scripts/master/biomodels/biomodels.php"
-sources[1]="biopax https://raw.github.com/bio2rdf/bio2rdf-scripts/master/biopax/biopax.php"
+sources[1]="biopax https://raw.github.com/dklassen/bio2rdf-scripts/biopax/biopax/biopax.php"
 sources[2]="sabiork https://raw.github.com/dklassen/bio2rdf-scripts/master/sabiork/sabiork.php"
 
 function setup_dataspace(){
