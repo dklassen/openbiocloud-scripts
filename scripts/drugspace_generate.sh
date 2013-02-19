@@ -11,8 +11,8 @@ scripts="${root_dir}/dataspaces/${SPACE_NAME}"
 logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
 
 cd $root_dir
-source ./lib/functions.sh
 source ./lib/common.sh
+source ./lib/functions.sh
 
 # Check virtuoso can be found
 check_virtuoso_install
