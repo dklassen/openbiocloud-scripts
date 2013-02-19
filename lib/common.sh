@@ -21,6 +21,11 @@ function check_virtuoso_install(){
 }
 
 
+function install_rapper(){ 
+echo "INFO: Installing rapper "
+ apt-get -y -qq install raptor-utils
+}
+
 function check_dependencies(){
 	if [ ! -d "${root_dir}/dataspaces/arc2" ]; then
 		cd ${root_dir}/dataspaces/
@@ -53,8 +58,10 @@ function setup_data_dir(){
 	# Hard reset the virtuoso directory
 	if [ -d ${db_dir} ];
 	then 
-		rm "$db_dir"{virtuoso-t,virtuoso.ini,isql}	
-	fi 
+		rm "$db_dir"{virtuoso-t,virtuoso.ini,isql}
+    else
+        mkdir $db_dir
+    fi 
 
 	echo "INFO: Setup virtuoso in ${db_dir}"
 	cp ${root_dir}/virtuoso.ini ${db_dir}virtuoso.ini

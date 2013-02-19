@@ -96,10 +96,11 @@ function rdf_loader_run(){
 ###########################################################################
 function virtuoso_shutdown(){
 
-	${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="shutdown(); exit;" &
-
-	tail -n 0 -F "${virtuoso_log}" | while read LOGLINE
+   ${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec="shutdown(); exit;" &
+    
+    tail -n 0 -F "${virtuoso_log}" | while read LOGLINE
 	do
+        echo $LOGLINE
 		[[ "${LOGLINE}" == *"Server shutdown complete"* ]] && echo "Virtuoso is shutdown gracefully" && pkill -P $$ tail
 	done
 
@@ -130,14 +131,11 @@ function build_database(){
 cd ${db_dir}
 virtuoso_ini=${db_dir}virtuoso.ini
 virtuoso_log="${db_dir}virtuoso.log"
-
 virtuoso_status check
 if $check
 	then
 	echo "INFO: a virtuoso instance (virtuoso-t) is running"
 	echo "INFO: Shutting it down now."
-	echo "$isql"
-	echo "$db_dir"
 	virtuoso_shutdown
 fi
 
@@ -150,10 +148,10 @@ echo "INFO: Starting virtuoso"
 # NOTE: There is a fault here when the commented lines are used.
 tail -n 0 -F "${virtuoso_log}" | while read LOGLINE
 do
-	echo $LOGLINE
 	[[ "${LOGLINE}" == *"Server online at 1111"* ]] && echo "INFO: Virtuoso is up and running" && pkill -P $$ tail
     #[[ "${LOGLINE}" == *"Virtuoso is already runnning"* ]] && echo "Virtuoso already running" && pkill -P $$ tail
-	 #[[ "${LOGLINE}" == *"There is no configuration file virtuoso.ini"* ]] && echo "No virtuoso.ini file found" && pkill -P $$ tail
+	#[[ "${LOGLINE}" == *"There is no configuration file virtuoso.ini"* ]] && echo "No virtuoso.ini file found" && pkill -P $$ tail
+
 done
 
 echo "INFO: Loading compressed ntriples in the scripts/ directory recursively"
@@ -161,6 +159,7 @@ run_cmd "ld_dir_all('${data_dir}/','*.nt.gz','${SPACE_NAME}')"
 run_cmd "ld_dir_all('${data_dir}/','*.nt','${SPACE_NAME}')"
 run_cmd "ld_dir_all('${data_dir}/','*.owl','${SPACE_NAME}')"
 run_cmd "ld_dir_all('${data_dir}/','*.ttl.gz','${SPACE_NAME}')"
+run_cmd "ld_dir_all('${data_dir}/','*.rdf.gz','${SPACE_NAME}')"
 
 # start five rdf loaders to handle the data
 echo "INFO: Starting RDF loaders"
