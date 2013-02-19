@@ -1,7 +1,4 @@
-#! /bin/bash
-isql=${db_dir}isql
-isql_cmd="${isql} localhost:1111 -U dba"
-isql_pass="-P dba"
+
 
 #####################################################################################
 # could use lsof to check the http port if there is a webservice running?
