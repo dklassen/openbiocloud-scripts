@@ -55,8 +55,16 @@ mkdir -p $folder
 cd $folder
 echo "INFO: Downloading ontologies"
 wget --no-check-certificate  ${human_phenotype} -O human_phenotype.owl
+rapper human_phenotype.owl > human_phenotype.nt
+gzip human_phenotype.nt
+rm human_phenotype.owl
+echo "INFO: Done with human_phenotype ontology"
+
 echo "INFO: Done with human_phenotype"
 wget --no-check-certificate  ${disease_ontology} -O disease_ontology.owl
+rapper disease_ontology.owl > disease_ontology.nt
+gzip disease_ontology.nt
+rm disease_ontology.owl
 echo "INFO: Done with disease_ontology"
 echo "INFO: Finished downloading the ontologies"
 
@@ -64,6 +72,3 @@ build_database
 #generate_analytics
 package
 alert $1
-
-
-
