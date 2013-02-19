@@ -14,16 +14,9 @@ cd $root_dir
 source ./lib/common.sh
 source ./lib/functions.sh
 
-# Check virtuoso can be found
 check_virtuoso_install
-if [  $? -ne 0 ];
-	then
-	echo "$?"
-	exit 1
-fi
-
-# Create the data directories
 setup_data_dir
+install_rapper
 
 # Directory where we are going to put everything
 if [ ! -d "$scripts" ];then
@@ -48,7 +41,7 @@ generate_data
 human_phenotype="http://purl.obolibrary.org/obo/hp.owl"
 disease_ontology="http://purl.obolibrary.org/obo/doid.owl"
 
-if [ ! -d "$datadir/ontologies"]; then
+if [ ! -d "$data_dir/ontologies" ]; then
     folder="${data_dir}/ontologies/"
     echo "INFO: Creating folder: ${folder}"
     mkdir -p $folder
