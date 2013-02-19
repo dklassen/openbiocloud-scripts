@@ -18,3 +18,10 @@ This is the directory where the data is downloaded and processed any valid rdf h
 
 > /opt/dataspaces/${SPACENAME}.tar.gz
 This is the directory where the tarball is placed after processing
+
+Requirements
+===========
+
+raptor-utils
+hadoop analytics (specific to scripts)
+mysql
