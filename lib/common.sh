@@ -1,5 +1,8 @@
 data_dir=/opt/data/${SPACE_NAME}		# Where the data will be placed
 db_dir=${data_dir}/virtuoso/			# Where the virtuoso db will be constructucted
+scripts="${root_dir}/dataspaces/${SPACE_NAME}"
+logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
+
 virtuoso_dir=/usr/local/virtuoso-opensource/		# The default location for virtuoso install
 isql=${db_dir}isql
 isql_cmd="${isql} localhost:1111 -U dba"
@@ -30,7 +33,7 @@ function check_dependencies(){
 	if [ ! -d "${root_dir}/dataspaces/php-lib" ]; then
 		previous=$(pwd)
 		cd "${root_dir}/dataspaces/"
-		wget -q https://github.com/micheldumontier/php-lib/archive/master.zip -O rdfapi.zip
+		wget -q https://github.com/dklassen/php-lib/archive/master.zip -O rdfapi.zip
 		unzip rdfapi.zip && rm rdfapi.zip
 		mv php-lib-master/ php-lib/
 		cd $previous
