@@ -3,26 +3,16 @@ set -e
 umask 0022
 
 SPACE_NAME="biomedical_space"			# Name of the endpoint being created
-data_dir=/opt/data/${SPACE_NAME}		# Where the data will be placed
-db_dir=${data_dir}/virtuoso/			# Where the virtuoso db will be constructucted
 
 root_dir=$(dirname $(dirname "$(pwd)/.."))
-scripts="${root_dir}/dataspaces/${SPACE_NAME}"
-logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
-
 cd $root_dir
 source ./lib/common.sh
 source ./lib/functions.sh
 
 # Check virtuoso can be found
 check_virtuoso_install
-if [  $? -ne 0 ];
-	then
-	echo "$?"
-	exit 1
-fi
-
 setup_data_dir
+check_dependencies
 touch $logfile
 echo "INFO: Logging to $logfile"
 
@@ -33,7 +23,7 @@ fi
 # List of source scripts to download and run format: [ name script_url files_to_process ]
 sources[0]="ctd https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ctd/ctd.php"
 sources[1]="pharmgkb https://github.com/bio2rdf/bio2rdf-scripts/raw/master/pharmgkb/pharmgkb.php"
-sources[2]='mgi https://raw.github.com/bio2rdf/bio2rdf-scripts/master/mgi/mgi.php'
+sources[2]="mgi https://raw.github.com/bio2rdf/bio2rdf-scripts/master/mgi/mgi.php"
 
 mysql_pass="penguinsdontfly"
 mysql_user='root'
@@ -44,12 +34,21 @@ if [ "$mysql_pkg" != "installed" ];then
 	echo "INFO: Installing mysql"
     sudo apt-get update
     echo "$mysql_pass" | $sudo apt-get -y -qq install mysql-server
+else
+	echo "INFO: MYSQL is installed"
+fi
+
+if [ $RESET -eq 0 ]; then
+	echo "INFO: Dropping ChEMBL database"
+	$(mysql --user=$mysql_user --password=$mysql_pass --batch --skip-column-names -e "DROP DATABASE chembl;")
 fi
 
 # Set up mysql database
-chembl_is_installed=$(mysql -u${mysql_user} -p${mysql_pass} -e "SHOW DATABASES LIKE 'chembl'" | grep chembl)
-if [ $chembl_is_installed -ne 'chembl' ];then
-	mysql -u$mysql_user -p $mysql_pass -e 'create database chembl'
+echo "INFO: Checking if ChEMBL database is installed"
+DBEXISTS=$(mysql --user=$mysql_user --password=$mysql_pass --batch --skip-column-names -e "SHOW DATABASES LIKE '"chembl"';" | grep "chembl" > /dev/null; echo "$?")
+if [ $DBEXISTS -eq 1 ];then
+	echo "INFO: Missing ChEMBL database"
+	mysql --user=$mysql_user --password=$mysql_pass -e 'create database chembl'
 
 	echo 'INFO: Creating chembl download directory'
 	chembl="ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_15_mysql.tar.gz"
@@ -57,36 +56,41 @@ if [ $chembl_is_installed -ne 'chembl' ];then
 	wget $chembl
 	tar -xvf chembl_15_mysql.tar.gz 
 	cd chembl_15_mysql/
-	mysql -u$mysql_user -p -h localhost chembl < chembl_15_mysql/chembl_15.mysqldump.sql 
+	mysql --user=$mysql_user --password=$mysql_pass -h localhost chembl < chembl_15.mysqldump.sql
+else
+	echo "INFO: ChEMBL is installed."
 fi
 
 # Run the chembl script for assays and compounds
 # Using the chembl branch from dklassen
-chembl_script="https://raw.github.com/dklassen/bio2rdf-scripts/chembl/chembl/chembl.php"
-folder="${scripts}/chembl"
-echo "INFO: Creating folder: ${folder}"
-mkdir -p $folder
+if [ ! -d "$data_dir/chembl" ]; then
+	chembl_script="https://raw.github.com/dklassen/bio2rdf-scripts/chembl/chembl/chembl.php"
+	folder="${scripts}/chembl"
+	echo "INFO: Creating folder: ${folder}"
+	mkdir -p $folder
 
-if [ -f "${folder}/chembl.php" ]; then
-	rm "${folder}/chembl.php"
-fi
+	if [ -f "${folder}/chembl.php" ]; then
+		rm "${folder}/chembl.php"
+	fi
 
-cd $folder
-echo "INFO: Downloading from github $chembl_script to chembl.php"
-wget --no-check-certificate -q $chembl_script -O chembl.php
+	cd $folder
+	echo "INFO: Downloading from github $chembl_script to chembl.php"
+	wget --no-check-certificate -q $chembl_script -O chembl.php
 
-if [ ! -d "${data_dir}/$1/data" ] ;then 
-	mkdir -p "${data_dir}/chembl/data"
-fi
+	if [ ! -d "${data_dir}/$1/data" ] ;then 
+		mkdir -p "${data_dir}/chembl/data"
+	fi
 
-echo "INFO: Running chembl parser for assay information"
-php chembl.php files=assays outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
-php chembl.php files=compounds outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
-php chembl.php files=targets outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
 
-status=$?
-if [ $status -ne 0 ]; then
-    echo "ERROR: chembl script died while generating assay data" 
+	echo "INFO: Running chembl parser for assay information"
+	php chembl.php files=assays outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
+	php chembl.php files=compounds outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
+	php chembl.php files=targets outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
+
+	status=$?
+	if [ $status -ne 0 ]; then
+	    echo "ERROR: chembl script died while generating assay data" 
+	fi
 fi
 
 download_pubmed_from_bio2rdf
