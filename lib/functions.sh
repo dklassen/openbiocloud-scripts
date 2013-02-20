@@ -272,12 +272,9 @@ log="$(pwd)/virtuoso.log"
 tail -n 0 -F "${log}" | while read LOGLINE
 do
 	[[ "${LOGLINE}" == *"Server online at 1111"* ]] && pkill -P $$ tail
-	[[ "${LOGLINE}" == *"Virtuoso is already runnning"* ]] && echo "Virtuoso already running" && pkill -P $$ tail
-	[[ "${LOGLINE}" == *"There is no configuration file virtuoso.ini"* ]] && echo "No virtuoso.ini file found" && pkill -P $$ tail
 done
 
 echo "INFO: Virtuoso is up and running"
-
 echo "INFO: Loading compressed nquads in the scripts/ directory recursively"
 run_cmd "ld_dir('${root_dir}/analytics/','*.nq.gz','analytics_is_nquads')"
 run_cmd "rdf_loader_run()"
@@ -294,7 +291,6 @@ function package(){
 	mkdir -p $deploy
 	#mv ${data_dir}/virtuoso/bin/virtuoso.db ${deploy}
 	#mv ${data_dir}/analytics/${SPACE_NAME}.nq.gz ${deploy}/${SPACE_NAME}_analytics.nq.gz
-
 	cd ${data_dir} && mv virtuoso ${SPACE_NAME} && tar -cvzf ${SPACE_NAME}.tar.gz ${SPACE_NAME}/ && mv ${SPACE_NAME}.tar.gz $deploy
 }
 
