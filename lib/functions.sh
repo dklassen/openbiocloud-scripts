@@ -196,9 +196,9 @@ function generate_analytics(){
 	CLASS_PATH=$WORKDIR/scripts/analytics-assembly.jar
 	HADOOP_BIN=/home/dankla/bio2rdf-dataspaces/analytics/hadoop/bin/hadoop
 
-	mkdir "$root_dir/analytics"
-	HADOOP_STATS_DIR=${root_dir}/analytics
-	EXPORT_DIR=${scripts}
+	mkdir "$data_dir/analytics"
+	HADOOP_STATS_DIR=${data_dir}/analytics
+	EXPORT_DIR=${data_dir}
 
 	# take the latest sindice-export
 	# change date to name of folder you want to put analysis in that is inside export dir
@@ -240,7 +240,7 @@ function generate_analytics(){
 	fi
 
 	# merge the files into a single compressed nq file
-	cd "$root_dir/analytics"
+	cd "$data_dir/analytics"
 	if [ -f "${SPACE_NAME}.nq.gz" ];
 		then
 		rm "${SPACE_NAME}.nq.gz"
@@ -254,7 +254,7 @@ function generate_analytics(){
 
  ##
  # Load the analytics file into the virtuoso db
-cd "${root_dir}/virtuoso/bin/"
+cd "${db_dir}"
 
 virtuoso_status check
 if $check
@@ -276,11 +276,17 @@ done
 
 echo "INFO: Virtuoso is up and running"
 echo "INFO: Loading compressed nquads in the scripts/ directory recursively"
-run_cmd "ld_dir('${root_dir}/analytics/','*.nq.gz','analytics_is_nquads')"
+run_cmd "ld_dir('${data_dir}/analytics/','*.nq.gz','analytics_is_nquads')"
 run_cmd "rdf_loader_run()"
 
 echo "INFO: Shutdown virtuoso now"
 virtuoso_shutdown
+}
+
+##
+# add the data created to the solr index 
+function index(){
+	find /opt/data/${SPACE_NAME}/ -name "*.nt.gz" -print | xargs java -jar ${root_dir}/bin/obc-solrloader.jar -dataspace ${SPACE_NAME} -solr ${SOLR} -file
 }
 
 ##
@@ -289,8 +295,6 @@ function package(){
 	cd ${data_dir}
 	deploy="/opt/dataspaces/"
 	mkdir -p $deploy
-	#mv ${data_dir}/virtuoso/bin/virtuoso.db ${deploy}
-	#mv ${data_dir}/analytics/${SPACE_NAME}.nq.gz ${deploy}/${SPACE_NAME}_analytics.nq.gz
 	cd ${data_dir} && mv virtuoso ${SPACE_NAME} && tar -cvzf ${SPACE_NAME}.tar.gz ${SPACE_NAME}/ && mv ${SPACE_NAME}.tar.gz $deploy
 }
 

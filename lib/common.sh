@@ -8,6 +8,9 @@ isql=${db_dir}isql
 isql_cmd="${isql} localhost:1111 -U dba"
 isql_pass="-P dba"
 
+# location of the solr server
+SOLR=http://hcls01.sindice.net:8983/solr
+
 # Check if there is a virtuoso install
 function check_virtuoso_install(){
 	if [ -d "$virtuoso_dir" ];
@@ -19,7 +22,6 @@ function check_virtuoso_install(){
 		exit 1
 	fi
 }
-
 
 function install_rapper(){ 
 echo "INFO: Installing rapper "
