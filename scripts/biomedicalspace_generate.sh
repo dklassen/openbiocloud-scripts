@@ -23,7 +23,7 @@ fi
 # List of source scripts to download and run format: [ name script_url files_to_process ]
 sources[0]="ctd https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ctd/ctd.php"
 sources[1]="pharmgkb https://github.com/bio2rdf/bio2rdf-scripts/raw/master/pharmgkb/pharmgkb.php"
-sources[2]="mgi https://raw.github.com/bio2rdf/bio2rdf-scripts/master/mgi/mgi.php"
+sources[2]="mgi https://raw.github.com/dklassen/bio2rdf-scripts/mgi/mgi/mgi.php"
 
 mysql_pass="penguinsdontfly"
 mysql_user='root'
@@ -81,7 +81,6 @@ if [ ! -d "$data_dir/chembl" ]; then
 		mkdir -p "${data_dir}/chembl/data"
 	fi
 
-
 	echo "INFO: Running chembl parser for assay information"
 	php chembl.php files=assays outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
 	php chembl.php files=compounds outdir="${data_dir}/chembl/data/" user=$mysql_user pass=$mysql_pass db_name='chembl'
@@ -96,6 +95,6 @@ fi
 download_pubmed_from_bio2rdf
 generate_data
 build_database
-# generate_analytics
+generate_analytics
 package
 alert $1
