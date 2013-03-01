@@ -25,3 +25,16 @@ Requirements
 raptor-utils
 hadoop analytics (specific to scripts)
 mysql
+
+
+Running Tips and Tricks
+========================
+
+[27/02/2013 11:33:32] Campinas Stéphane: hadoop jar target/hadoop-summary-0.0.14-SNAPSHOT-assembly.jar org.sindice.graphsummary.cascading.rdf.filter.NodeFilterSummaryGraphCLI --input dana/summary --output dana/summary_filtered --input-format TEXTLINE --filter-query ./query
+[27/02/2013 11:33:54] Campinas Stéphane: 
+
+Example text in filter text file
+
+> ?node <http://vocab.sindice.net/domain_uri> ?d ;
+>      <http://vocab.sindice.net/analytics#cardinality> ?card .
+> FILTER(?card = 1)
