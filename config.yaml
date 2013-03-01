@@ -1,0 +1,60 @@
+---
+default:
+        # NQUADs format
+        #- document-format: NQUADS
+        # Ntriples format
+        - document-format: NTRIPLES
+        - default-domain: bio2rdf.org
+
+        - class-attributes:
+                  - http://www.w3.org/1999/02/22-rdf-syntax-ns#type
+                  - http://opengraphprotocol.org/schema/type
+                  - http://opengraph.org/schema/type
+                  - http://ogp.me/ns#type
+                  - http://purl.org/dc/elements/1.1/type
+                  # Added 19 Oct 2011
+                  - http://purl.org/stuff/rev#type
+                  # Added 19 Oct 2011
+                  - http://purl.org/dc/terms/type
+                  - http://dbpedia.org/property/type
+                  - http://dbpedia.org/ontology/type
+                  # Added 25 Oct 2011
+                  - http://dbpedia.org/ontology/Organisation/type
+                  # Added 25 Oct 2011
+                  - http://xmlns.com/foaf/0.1/type
+        - predicates-blacklist:
+                  - http://dbpedia.org/ontology/wikiPageWikiLink
+                  - http://dbpedia.org/property/wikilink
+
+        - hadoop.tmp.dir: hadoop-tmp/tmp-${user.name}
+        - mapred.reduce.tasks: 25
+        - cascading.cogroup.spill.threshold: 50000
+        - mapred.map.child.java.opts: -server -XX:+UseParallelGC -XX:ParallelGCThreads=2 -XX:+UseParallelOldGC -Xmx512m
+        - mapred.reduce.child.java.opts: -server -XX:+UseParallelGC -XX:ParallelGCThreads=2 -XX:+UseParallelOldGC -Xmx512m
+        # reduce-side optimisations for the shuffle phase, See jira SND-2242
+        - io.sort.factor: 25
+        - mapred.inmem.merge.threshold: 0
+        - mapred.job.shuffle.input.buffer.percent: 0.5
+        # LZO Compression
+        - mapred.compress.map.output: true
+        - mapred.map.output.compression.type: BLOCK
+        - mapred.map.output.compression.codec: org.apache.hadoop.io.compress.GzipCodec
+        - mapred.output.compress: true
+        - mapred.output.compression.type: BLOCK
+        - mapred.output.compression.codec: org.apache.hadoop.io.compress.GzipCodec
+        # CoGroup spills compression
+        - cascading.cogroup.spill.compress: true
+        - cascading.cogroup.spill.codecs: org.apache.hadoop.io.compress.GzipCodec
+        - mapred.job.priority: VERY_HIGH
+        # reduce-side optimisations for the shuffle phase, See jira SND-2242
+#        - mapred.reduce.parallel.copies: 20
+        - mapred.job.name: DataGraphSummaryCascade
+dictionary:
+        - io.sort.factor: 10
+        - mapred.inmem.merge.threshold: 50
+        - hbase.hfileoutputformat.keycomparator: org.sindice.core.analytics.cascading.scheme.HFileLongKeyComparator
+        - hfile.compression: gz
+RDF-DUMPS:
+        - mapred.output.compression.codec: org.apache.hadoop.io.compress.GzipCodec
+        - n-dumps: 25
+...
