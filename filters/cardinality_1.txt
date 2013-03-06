@@ -1,3 +1,1 @@
-?node <http://vocab.sindice.net/domain_uri> ?d ;
-      <http://vocab.sindice.net/analytics#cardinality> ?card .
- FILTER(?card = 1)
+?node <http://vocab.sindice.net/domain_uri> ?d ;<http://vocab.sindice.net/analytics#cardinality> ?card .FILTER(?card=1)
