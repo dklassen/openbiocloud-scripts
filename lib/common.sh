@@ -1,7 +1,7 @@
 data_dir=/opt/data/${SPACE_NAME}		# Where the data will be placed
 db_dir=${data_dir}/virtuoso/			# Where the virtuoso db will be constructucted
 scripts="${root_dir}/dataspaces/${SPACE_NAME}"
-logfile="${data_dir}/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
+logfile="${data_dir}/log/${SPACE_NAME}_$(date +"%Y-%m-%d").log"
 
 virtuoso_dir=/usr/local/virtuoso-opensource/		# The default location for virtuoso install
 isql=${db_dir}isql
@@ -55,7 +55,17 @@ function setup_data_dir(){
 	if [ ! -d ${data_dir} ];
 		then
 		mkdir -p $data_dir
+
 	fi
+
+	# create the log directory if it doesn't exist
+	if [ ! -d "${data_dir}/log" ];
+		then
+		mkdir -p "${data_dir}/log"
+	fi
+
+	touch $logfile
+echo "INFO: Logging to $logfile"
 
 	# Hard reset the virtuoso directory
 	if [ -d ${db_dir} ];
