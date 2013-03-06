@@ -99,6 +99,6 @@ fi
 download_kegg
 generate_data
 build_database
-#generate_analytics
+generate_analytics
 package
 alert $1

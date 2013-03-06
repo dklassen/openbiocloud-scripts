@@ -23,8 +23,8 @@ if [ ! -d "$scripts" ];then
 	mkdir -p $scripts
 fi
 
-sources[0]="ndc https://raw.github.com/bio2rdf/bio2rdf-scripts/master/ndc/ndc.php"
-sources[1]="omim https://raw.github.com/dklassen/bio2rdf-scripts/master/omim/omim.php"
+sources[0]="ndc https://raw.github.com/dklassen/bio2rdf-scripts/ndc/ndc/ndc.php"
+sources[1]="omim https://raw.github.com/dklassen/bio2rdf-scripts/omim/omim/omim.php"
 sources[2]="drugbank https://raw.github.com/dklassen/bio2rdf-scripts/drugbank/drugbank/drugbank.php"
 sources[3]="sider https://raw.github.com/micheldumontier/bio2rdf-scripts/sider/sider/sider.php"
 sources[4]="pharmgkb https://github.com/bio2rdf/bio2rdf-scripts/raw/master/pharmgkb/pharmgkb.php offsides"

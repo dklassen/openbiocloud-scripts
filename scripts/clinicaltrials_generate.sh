@@ -76,6 +76,6 @@ if [ $status -ne 0 ]; then
 fi
 
 build_database
-# #generate_analytics
+generate_analytics
 package
 alert $1

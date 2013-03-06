@@ -13,8 +13,7 @@ source ./lib/functions.sh
 check_virtuoso_install
 setup_data_dir
 check_dependencies
-touch $logfile
-echo "INFO: Logging to $logfile"
+
 
 if [ ! -d "$scripts" ];then
 	mkdir -p $scripts
@@ -92,9 +91,9 @@ if [ ! -d "$data_dir/chembl" ]; then
 	fi
 fi
 
-download_pubmed_from_bio2rdf
-generate_data
-build_database
+#download_pubmed_from_bio2rdf
+#generate_data
+#build_database
 generate_analytics
-package
-alert $1
+#package
+#alert $1
