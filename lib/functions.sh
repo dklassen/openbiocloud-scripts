@@ -161,9 +161,9 @@ run_cmd "ld_dir_all('${data_dir}/','*.owl','${SPACE_NAME}')"
 run_cmd "ld_dir_all('${data_dir}/','*.ttl.gz','${SPACE_NAME}')"
 run_cmd "ld_dir_all('${data_dir}/','*.rdf.gz','${SPACE_NAME}')"
 
-# start five rdf loaders to handle the data
+# Start rdf loaders to handle the data
 echo "INFO: Starting RDF loaders"
-for x in {1..5}
+for x in {1..3}
 do 
  	${isql_cmd} ${isql_pass} verbose=on echo=on errors=stdout banner=off prompt=off exec='rdf_loader_run(); exit;' &> /dev/null &
 done
@@ -177,9 +177,8 @@ while true; do
 		break
 	fi
 	echo -en "\rstill waiting...files left: $result"
-	sleep 120
+	sleep 300
 done
-
 
  echo "INFO: Shutdown virtuoso now"
  virtuoso_shutdown
@@ -192,13 +191,17 @@ done
 function generate_analytics(){
 	echo "INFO: Generating analytics"
 
-	WORKDIR=/home/dankla/bio2rdf-dataspaces/analytics/graph_analytics
-	CLASS_PATH=$WORKDIR/scripts/analytics-assembly.jar
-	HADOOP_BIN=/home/dankla/bio2rdf-dataspaces/analytics/hadoop/bin/hadoop
+	WORKDIR=/home/dankla/analytics/graphsummary
+	CLASS_PATH=$WORKDIR/scripts/hadoop-summary-0.0.14-assembly.jar
+	HADOOP_BIN=/home/dankla/analytics/hadoop/bin/hadoop
 
-	mkdir "$data_dir/analytics"
-	HADOOP_STATS_DIR=${data_dir}/analytics
+	HADOOP_STATS_DIR=${data_dir}/analytics_$(date +"%Y-%m-%d")_$(date +"%H-%M-%S")
 	EXPORT_DIR=${data_dir}
+
+	if [ ! -d "$HADOOP_STATS_DIR" ]; then
+		mkdir "$HADOOP_STATS_DIR"
+		chown dankla:dankla "$HADOOP_STATS_DIR"
+	fi
 
 	# take the latest sindice-export
 	# change date to name of folder you want to put analysis in that is inside export dir
@@ -206,6 +209,8 @@ function generate_analytics(){
 	RUN_ID=$(hostname -s)_$(date +"%H-%M-%S")
 	HDFS_BASE_PATH="/user/dankla/bio2rdf-dataspaces"
 	HDFS_RUN_PATH=${HDFS_BASE_PATH}/${DATE}_$RUN_ID
+	HDFS_FILTER_PATH=${HDFS_BASE_PATH}/${DATE}_${RUN_ID}_filtered
+	
 	echo "INFO: WORKDIR is being set to absolute reference: $WORKDIR"
 	echo "INFO: Creating input/ and output/ in $HDFS_RUN_PATH"
 	
@@ -224,23 +229,27 @@ function generate_analytics(){
 
 	echo "INFO: Upload complete."
 
-	# Data Graph Summary Cascade
+	#Data Graph Summary Cascade
 	sudo -u dankla $HADOOP_BIN jar $CLASS_PATH org.sindice.graphsummary.cascading.DataGraphSummaryCascadeCLI --input $HDFS_RUN_PATH/input --output $HDFS_RUN_PATH/output --cascade-config $WORKDIR/scripts/config.yaml --input-format TEXTLINE --date $DATE
 	
-	if [ $? -eq 0 ]; then
-		sudo -u dankla $HADOOP_BIN fs -get "$HDFS_RUN_PATH/output/rdf-dumps/*" $HADOOP_STATS_DIR/
-		sudo -u dankla $HADOOP_BIN fs -mv "$HDFS_RUN_PATH/output/rdf-dumps/*" $HDFS_RUN_PATH/
-		sudo -u dankla $HADOOP_BIN fs -rmr $HDFS_RUN_PATH/output/rdf-dumps/
-
-    	# Allow the virtuoso script to load the dumps
-    	sudo -u dankla $HADOOP_BIN fs -rm $HDFS_RUN_PATH/load.disable
-	else
-    	echo "Error while computing the summary"
+	if [ $? -eq 1 ]; then
+    	echo "ERROR:Error while computing the summary" 
     	exit 1
 	fi
 
+	# Data Node Filter Cascade
+	sudo -u dankla $HADOOP_BIN fs -mkdir $HDFS_FILTER_PATH
+	sudo -u dankla $HADOOP_BIN jar $CLASS_PATH org.sindice.graphsummary.cascading.rdf.filter.NodeFilterSummaryGraphCLI --input $HDFS_RUN_PATH/output/rdf-dumps --output $HDFS_FILTER_PATH/ --cascade-config $WORKDIR/scripts/config.yaml --input-format TEXTLINE --filter-query $root_dir/filters/cardinality_1.txt
+
+	if [ $? -eq 0 ]; then
+    	sudo -u dankla $HADOOP_BIN fs -get " $HDFS_FILTER_PATH/part*" $HADOOP_STATS_DIR/
+    else
+    	echo "ERROR:Error while computing the summary" 
+    	exit 1
+	fi
+	
 	# merge the files into a single compressed nq file
-	cd "$data_dir/analytics"
+	cd "$HADOOP_STATS_DIR"
 	if [ -f "${SPACE_NAME}.nq.gz" ];
 		then
 		rm "${SPACE_NAME}.nq.gz"
@@ -276,7 +285,7 @@ done
 
 echo "INFO: Virtuoso is up and running"
 echo "INFO: Loading compressed nquads in the scripts/ directory recursively"
-run_cmd "ld_dir('${data_dir}/analytics/','*.nq.gz','analytics_is_nquads')"
+run_cmd "ld_dir('${$HADOOP_STATS_DIR}','*.nq.gz','analytics_is_nquads')"
 run_cmd "rdf_loader_run()"
 
 echo "INFO: Shutdown virtuoso now"
